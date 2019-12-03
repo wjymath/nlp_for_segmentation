@@ -38,8 +38,8 @@ class HMM:
         def init_para():
             for state in self.state_list:
                 self.A_dic[state] = {s: 0.0 for s in self.state_list}
-                self.Pi_dic = 0.0
-                self.B_dic = {}
+                self.Pi_dic[state] = 0.0
+                self.B_dic[state] = {}
                 count_dic[state] = 0
         def makeLabel(text):
             out_text = []
@@ -70,13 +70,13 @@ class HMM:
                 for k, v in enumerate(line_state):
                     count_dic[v] += 1
                     if k == 0:
-                        self.Pi_dic[v] += 1 # 每个句子的第一个字的状态，用于计算初始状态概率
+                        self.Pi_dic[v] += 1  # 每个句子的第一个字的状态，用于计算初始状态概率
                     else:
                         self.A_dic[line_state[k - 1]][v] += 1
                         self.B_dic[line_state[k]][word_list[k]] = self.B_dic[line_state[k]].get(word_list[k], 0) + 1
         self.Pi_dic = {k: v * 1.0 / line_num for k, v in self.Pi_dic.items()}
-        self.A_dic = {k: {k1: v1 / count_dic[k] for k1, v1 in v.items()} for k, v in self.A_dic.items()} # 状态转移矩阵，双字典
-        self.B_dic = {k: {k1: (v1 + 1) / count_dic[k] for k1, v1 in v.items()} for k, v in self.B_dic}
+        self.A_dic = {k: {k1: v1 / count_dic[k] for k1, v1 in v.items()} for k, v in self.A_dic.items()}  # 状态转移矩阵，双字典
+        self.B_dic = {k: {k1: (v1 + 1) / count_dic[k] for k1, v1 in v.items()} for k, v in self.B_dic.items()}
 
         import pickle
         with open(self.model_file, 'wb') as f:
@@ -86,7 +86,7 @@ class HMM:
 
         return self
 
-    def viterbi(self, text, states, start_p, trans_p, emit_p):
+    def viterbi(self, text, states, start_p, trans_p, emit_p):  # 局部最优可以推出全局最优
         V = [{}]
         path = {}
         for y in states:
@@ -100,7 +100,7 @@ class HMM:
             neverSeen = text[t] not in emit_p['S'].keys() and text[t] not in emit_p['M'].keys() and text[t] not in emit_p['E'].keys() and text[t] not in emit_p['B'].keys()
             for y in states:
                 emitP = emit_p[y].get(text[t], 0) if not neverSeen else 1.0
-                (prob, state) = max([(V[t - 1][y0] * trans_p[y0].get(y, 0) * emitP, y0) for y0 in states if V[t - 1][y0] > 0])
+                (prob, state) = max([(V[t - 1][y0] * trans_p[y0].get(y, 0) * emitP, y0) for y0 in states if V[t - 1][y0] > 0])  # 维特比算法，动态规划，计算转移概率、发射概率
                 V[t][y] = prob
                 newpath[y] = path[state] + [y]
             path = newpath
@@ -128,3 +128,11 @@ class HMM:
                 next = i + 1
         if next < len(text):
             yield text[next:]
+if __name__ == '__main__':
+    hmm = HMM()
+    hmm.train('./data/trainCorpus.txt_utf8')
+
+    text = '切词的尝试例子'
+    res = hmm.cut(text)
+    print(text)
+    print(str(list(res)))
